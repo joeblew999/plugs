@@ -2,7 +2,12 @@
 
 A plugin system for Go binaries that talk to hardware. Self-updates from GitHub Releases.
 
-**Docs:** https://joeblew999.github.io/plugs/
+**Docs:** https://plugs.ubuntusoftware.net
+
+## Hosting
+
+- **Docs & Binaries:** GitHub Pages + GitHub Releases
+- **DNS:** Cloudflare (`plugs.ubuntusoftware.net` → GitHub Pages)
 
 ## Overview
 
