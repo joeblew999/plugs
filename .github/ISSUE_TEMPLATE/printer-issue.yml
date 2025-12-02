@@ -1,0 +1,43 @@
+name: Printer issue
+description: Report a problem controlling a printer
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: printer
+    attributes:
+      label: Printer model/name
+      description: Choose the printer you were using
+      options:
+        - Bambu Lab X1
+        - Demo/fake printer
+        - Other (please specify below)
+    validations:
+      required: true
+  - type: input
+    id: printer_other
+    attributes:
+      label: If Other, which printer?
+      placeholder: "Printer model"
+    validations:
+      required: false
+  - type: input
+    id: software_version
+    attributes:
+      label: x1ctl version
+      description: Run `x1ctl -version` and paste the result.
+      placeholder: "v0.1.x"
+    validations:
+      required: true
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened?
+      description: What were you trying to do, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce (if applicable)
+    validations:
+      required: false

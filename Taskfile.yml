@@ -1,0 +1,339 @@
+version: "3"
+
+vars:
+  # GitHub repository info (change these for your project)
+  GITHUB_USER: joeblew999
+  GITHUB_REPO: plugs
+  GO_MODULE: github.com/{{.GITHUB_USER}}/{{.GITHUB_REPO}}
+  REPO_URL: https://github.com/{{.GITHUB_USER}}/{{.GITHUB_REPO}}
+
+  # Plugins (binaries in cmd/plugins/)
+  PLUGINS:
+    sh: ls -d cmd/plugins/*/ 2>/dev/null | xargs -I{} basename {} | tr '\n' ' ' | xargs
+  # Client tools (binaries in cmd/ root)
+  CLIENTS: plugctl
+  # All binaries to build (plugins + clients)
+  BINARIES: "{{.PLUGINS}} {{.CLIENTS}}"
+
+  # Build configuration
+  DIST_DIR: dist
+  INSTALL_DIR: /usr/local/bin
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+  LD_FLAGS: "-X {{.GO_MODULE}}/internal/version.Version={{.VERSION}}"
+
+  # Platform detection
+  HOST_OS:
+    sh: go env GOOS
+  HOST_ARCH:
+    sh: go env GOARCH
+
+  # Cross-compile targets (space-separated OS/ARCH pairs)
+  PLATFORMS: linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
+
+  # Docs / GitHub Pages
+  DOCS_DIR: docs
+  DOCS_PORT: "8080"
+  PAGES_URL: https://{{.GITHUB_USER}}.github.io/{{.GITHUB_REPO}}
+  RELEASES_URL: https://github.com/{{.GITHUB_USER}}/{{.GITHUB_REPO}}/releases
+
+tasks:
+  default:
+    desc: Build all binaries for all platforms
+    cmds:
+      - task: build:all
+
+  # --- Building ---
+
+  build:clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf {{.DIST_DIR}}
+
+  build:list:
+    desc: List all binaries and platforms that will be built
+    cmds:
+      - echo "Binaries:" && echo "{{.BINARIES}}" | tr ' ' '\n' | sed 's/^/  /'
+      - echo "Platforms:" && echo "{{.PLATFORMS}}" | tr ' ' '\n' | sed 's/^/  /'
+
+  build:one:
+    desc: "Build a binary (usage: task build:one NAME=x1ctl OS=linux ARCH=amd64)"
+    vars:
+      NAME: '{{.NAME | default "x1ctl"}}'
+      OS: "{{.OS | default .HOST_OS}}"
+      ARCH: "{{.ARCH | default .HOST_ARCH}}"
+      EXT: '{{if eq .OS "windows"}}.exe{{end}}'
+      OUTPUT: "{{.DIST_DIR}}/{{.NAME}}_{{.OS}}_{{.ARCH}}{{.EXT}}"
+      # Resolve cmd path: prefer cmd/plugins/NAME, fallback to cmd/NAME
+      CMD_PATH:
+        sh: |
+          if [ -d "cmd/plugins/{{.NAME}}" ]; then
+            echo "cmd/plugins/{{.NAME}}"
+          else
+            echo "cmd/{{.NAME}}"
+          fi
+    cmds:
+      - mkdir -p {{.DIST_DIR}}
+      - GOOS={{.OS}} GOARCH={{.ARCH}} CGO_ENABLED=0 go build -ldflags "{{.LD_FLAGS}}" -o {{.OUTPUT}} ./{{.CMD_PATH}}
+      - echo "Built {{.OUTPUT}}"
+
+  build:local:
+    desc: Build all binaries for host platform only
+    cmds:
+      - for: { var: BINARIES, split: " " }
+        task: build:one
+        vars:
+          NAME: "{{.ITEM}}"
+
+  build:all:
+    desc: Build all binaries for all platforms
+    cmds:
+      - for: { var: BINARIES, split: " " }
+        task: build:platforms
+        vars:
+          NAME: "{{.ITEM}}"
+
+  build:platforms:
+    internal: true
+    vars:
+      NAME: "{{.NAME}}"
+    cmds:
+      - for: { var: PLATFORMS, split: " " }
+        task: build:one
+        vars:
+          NAME: "{{.NAME}}"
+          OS: '{{index (splitList "/" .ITEM) 0}}'
+          ARCH: '{{index (splitList "/" .ITEM) 1}}'
+
+  # --- Installation ---
+
+  install:local:
+    desc: "Install binary to INSTALL_DIR (usage: task install:local NAME=x1ctl)"
+    vars:
+      NAME: '{{.NAME | default "x1ctl"}}'
+      EXT: '{{if eq .HOST_OS "windows"}}.exe{{end}}'
+      SRC: "{{.DIST_DIR}}/{{.NAME}}_{{.HOST_OS}}_{{.HOST_ARCH}}{{.EXT}}"
+      DEST: "{{.INSTALL_DIR}}/{{.NAME}}{{.EXT}}"
+    cmds:
+      - task: build:one
+        vars: { NAME: "{{.NAME}}" }
+      - sudo install -m 755 {{.SRC}} {{.DEST}}
+      - echo "Installed {{.DEST}}"
+
+  install:remote:
+    desc: "Install latest release from GitHub (usage: task install:remote NAME=x1ctl)"
+    vars:
+      NAME: '{{.NAME | default "x1ctl"}}'
+      EXT: '{{if eq .HOST_OS "windows"}}.exe{{end}}'
+      ASSET: "{{.NAME}}_{{.HOST_OS}}_{{.HOST_ARCH}}{{.EXT}}"
+      DEST: "{{.INSTALL_DIR}}/{{.NAME}}{{.EXT}}"
+    cmds:
+      - |
+        echo "Downloading latest {{.NAME}} from {{.RELEASES_URL}}..."
+        curl -sL "https://github.com/{{.GITHUB_USER}}/{{.GITHUB_REPO}}/releases/latest/download/{{.ASSET}}" -o /tmp/{{.ASSET}}
+        sudo install -m 755 /tmp/{{.ASSET}} {{.DEST}}
+        rm /tmp/{{.ASSET}}
+        echo "Installed {{.DEST}} ($({{.DEST}} --version 2>/dev/null || echo 'version unknown'))"
+
+  # --- CI/CD ---
+
+  ci:
+    desc: Run tests and build all targets
+    cmds:
+      - task: test:unit
+      - task: build:all
+
+  # --- Release ---
+
+  release:tag:
+    desc: "Create and push a version tag (usage: task release:tag -- v0.1.0)"
+    cmds:
+      - git tag {{.CLI_ARGS}}
+      - git push origin {{.CLI_ARGS}}
+
+  release:create:
+    desc: "Create tag and trigger release (usage: task release:create -- v0.1.0)"
+    cmds:
+      - task: release:tag
+      - echo "Release triggered. Watch {{.RELEASES_URL}}"
+
+  release:list:
+    desc: List recent releases
+    preconditions:
+      - sh: command -v gh
+        msg: "gh CLI not installed. Install with: brew install gh"
+    cmds:
+      - gh release list --repo {{.GITHUB_USER}}/{{.GITHUB_REPO}} --limit 5
+
+  release:latest:
+    desc: Show latest release details
+    preconditions:
+      - sh: command -v gh
+        msg: "gh CLI not installed. Install with: brew install gh"
+    cmds:
+      - gh release view --repo {{.GITHUB_USER}}/{{.GITHUB_REPO}}
+
+  build:version:
+    desc: Show the resolved build version
+    cmds:
+      - echo {{.VERSION}}
+
+  # --- Docs / GitHub Pages ---
+
+  docs:generate:
+    desc: Generate docs/index.md from template (uses Taskfile vars)
+    cmds:
+      - go run ./cmd/docgen
+
+  docs:serve:
+    desc: Serve docs locally for preview
+    preconditions:
+      - sh: command -v static-server
+        msg: "static-server not installed. Run: go install github.com/eliben/static-server@latest"
+    cmds:
+      - echo "Serving {{.DOCS_DIR}} at http://localhost:{{.DOCS_PORT}}"
+      - static-server -port {{.DOCS_PORT}} {{.DOCS_DIR}}
+
+  docs:open:
+    desc: Open deployed GitHub Pages site
+    cmds:
+      - open "{{.PAGES_URL}}"
+
+  docs:check:
+    desc: Check if GitHub Pages site is reachable
+    cmds:
+      - curl -sSf "{{.PAGES_URL}}" > /dev/null && echo "✓ {{.PAGES_URL}} is live" || echo "✗ {{.PAGES_URL}} not reachable"
+
+  docs:pages:status:
+    desc: Show GitHub Pages configuration and status
+    preconditions:
+      - sh: command -v gh
+        msg: "gh CLI not installed. Install with: brew install gh"
+    cmds:
+      - |
+        echo "=== GitHub Pages Status ==="
+        gh api repos/{{.GITHUB_USER}}/{{.GITHUB_REPO}}/pages --jq '{
+          url: .html_url,
+          source: .source,
+          build_type: .build_type,
+          status: .status,
+          https_enforced: .https_enforced
+        }' 2>/dev/null || echo "Pages not configured"
+
+  docs:pages:setup:
+    desc: Configure GitHub Pages to serve from /docs on main branch
+    preconditions:
+      - sh: command -v gh
+        msg: "gh CLI not installed. Install with: brew install gh"
+    cmds:
+      - |
+        echo "Configuring GitHub Pages to serve from /docs..."
+        gh api repos/{{.GITHUB_USER}}/{{.GITHUB_REPO}}/pages -X PUT \
+          --input - <<< '{"build_type":"legacy","source":{"branch":"main","path":"/docs"}}' \
+          && echo "✓ Pages configured to serve from /docs on main" \
+          || echo "✗ Failed to configure pages (may already be configured)"
+
+  docs:pages:disable:
+    desc: Disable GitHub Pages for this repository
+    preconditions:
+      - sh: command -v gh
+        msg: "gh CLI not installed. Install with: brew install gh"
+    cmds:
+      - gh api repos/{{.GITHUB_USER}}/{{.GITHUB_REPO}}/pages -X DELETE && echo "✓ Pages disabled" || echo "✗ Failed to disable pages"
+
+  # --- GitHub CLI Helpers ---
+
+  gh:auth:
+    desc: Verify gh CLI is installed and authenticated
+    cmds:
+      - |
+        if ! command -v gh &> /dev/null; then
+          echo "✗ gh CLI not installed. Install with: brew install gh"
+          exit 1
+        fi
+        echo "✓ gh CLI installed: $(gh --version | head -1)"
+        if gh auth status &> /dev/null; then
+          echo "✓ gh CLI authenticated"
+          gh api user --jq '"  Logged in as: \(.login)"'
+        else
+          echo "✗ gh CLI not authenticated. Run: gh auth login"
+          exit 1
+        fi
+
+  gh:open:
+    desc: "Open a resource (usage: task gh:open -- repo|releases|actions|docs)"
+    cmds:
+      - |
+        case "{{.CLI_ARGS}}" in
+          repo) open "{{.REPO_URL}}" ;;
+          releases) open "{{.RELEASES_URL}}" ;;
+          actions) open "{{.REPO_URL}}/actions" ;;
+          docs|pages) open "{{.PAGES_URL}}" ;;
+          *) echo "Usage: task gh:open -- repo|releases|actions|docs" ;;
+        esac
+
+  # --- Run Tasks ---
+
+  run:fakeprinter:
+    desc: Run a local fake printer (TLS websocket on :8883)
+    cmds:
+      - go run ./cmd/plugins/fakeprinter -addr :8883
+
+  run:x1ctl:
+    desc: "Run x1ctl (usage: task run:x1ctl -- --ip 192.168.1.x --access-code XXX status)"
+    cmds:
+      - go run ./cmd/plugins/x1ctl {{.CLI_ARGS}}
+
+  run:plugctl:
+    desc: "Run plugctl (usage: task run:plugctl -- list)"
+    cmds:
+      - go run ./cmd/plugctl {{.CLI_ARGS}}
+
+  # --- Testing ---
+
+  test:unit:
+    desc: Run unit tests
+    cmds:
+      - go test ./...
+
+  test:version:
+    desc: "Test version and update check for a binary (usage: task test:version NAME=fakeprinter)"
+    vars:
+      NAME: '{{.NAME | default "fakeprinter"}}'
+      BIN: "{{.DIST_DIR}}/{{.NAME}}_{{.HOST_OS}}_{{.HOST_ARCH}}"
+    cmds:
+      - task: build:one
+        vars: { NAME: "{{.NAME}}" }
+      - echo "=== Testing {{.NAME}} version ==="
+      - "{{.BIN}} version 2>/dev/null || {{.BIN}} --version"
+      - echo "=== Testing {{.NAME}} check-update ==="
+      - "{{.BIN}} version --check 2>/dev/null || {{.BIN}} --check-update"
+
+  test:update:
+    desc: "Test self-update by downloading release to temp location (usage: task test:update NAME=fakeprinter)"
+    vars:
+      NAME: '{{.NAME | default "fakeprinter"}}'
+      BIN: "{{.DIST_DIR}}/{{.NAME}}_{{.HOST_OS}}_{{.HOST_ARCH}}"
+      TEST_BIN: "/tmp/{{.NAME}}-update-test"
+    cmds:
+      - task: build:one
+        vars: { NAME: "{{.NAME}}" }
+      - echo "=== Copying built binary to temp location ==="
+      - cp "{{.BIN}}" "{{.TEST_BIN}}"
+      - chmod +x "{{.TEST_BIN}}"
+      - echo "=== Before update ==="
+      - "{{.TEST_BIN}} version 2>/dev/null || {{.TEST_BIN}} --version"
+      - echo "=== Running self-update ==="
+      - "{{.TEST_BIN}} update 2>/dev/null || {{.TEST_BIN}} --update || true"
+      - echo "=== After update ==="
+      - "{{.TEST_BIN}} version 2>/dev/null || {{.TEST_BIN}} --version"
+      - rm -f "{{.TEST_BIN}}"
+
+  test:all:
+    desc: Run all tests including version/update tests
+    cmds:
+      - task: test:unit
+      - task: test:version
+        vars: { NAME: fakeprinter }
+      - task: test:version
+        vars: { NAME: x1ctl }
