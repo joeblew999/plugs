@@ -1,72 +1,80 @@
 # plugs
 
-Late-bound plugin system with self-update from GitHub Releases.
+A plugin system for Go binaries that talk to hardware. Self-updates from GitHub Releases.
 
-**Docs & Downloads:** https://joeblew999.github.io/plugs/
+**Docs:** https://joeblew999.github.io/plugs/
 
-## What This Is
+## Overview
 
-A template for building Go binaries that:
-- Self-update from GitHub Releases
-- Install to user's home directory (`~/.plugctl/bin/`)
-- Can be managed by a central client tool
+Plugs provides a framework for building CLI tools that communicate with hardware devices (printers, IoT, embedded systems) and distribute them as self-updating binaries.
+
+Features:
+- Self-update from GitHub Releases (no package manager required)
+- User-local installs to `~/.plugctl/bin/` (no sudo)
+- Central management via `plugctl`
+- Cross-platform: Linux, macOS, Windows (amd64/arm64)
 
 ## Plugins
 
 | Plugin | Description |
 |--------|-------------|
-| `x1ctl` | CLI for Bambu Lab X1 printers |
+| `x1ctl` | CLI for Bambu Lab X1 printers (LAN mode) |
 | `fakeprinter` | Mock printer server for testing |
 
-## Client Tool
+## Install
 
-`plugctl` manages plugins without requiring sudo or system-wide installs:
+Download `plugctl` from [Releases](https://github.com/joeblew999/plugs/releases/latest), then:
 
 ```sh
-plugctl list              # list available plugins
-plugctl install x1ctl     # install to ~/.plugctl/bin/
-plugctl update            # update all installed plugins
-plugctl install --local ./dist/x1ctl_darwin_arm64  # install local build
+plugctl install x1ctl       # install a plugin
+plugctl list                # list available plugins
+plugctl list --installed    # list installed plugins
 ```
 
-Add `~/.plugctl/bin` to your PATH to use installed plugins.
+Add `~/.plugctl/bin` to your PATH.
 
-## Self-Update
+## Usage
+
+### Managing Plugins
+
+```sh
+plugctl install x1ctl                # install from GitHub releases
+plugctl install --local ./my-binary  # install local build
+plugctl update                       # update all plugins
+plugctl update x1ctl                 # update specific plugin
+plugctl update --self                # update plugctl itself
+plugctl version --check              # check for updates
+plugctl version --all                # show all installed versions
+```
+
+### Plugin Self-Update
 
 Every plugin can update itself:
 
 ```sh
 x1ctl update              # update x1ctl
 x1ctl version --check     # check for updates
-fakeprinter --update      # update fakeprinter
+fakeprinter --update      # update fakeprinter (flag-based CLI)
+fakeprinter --version     # show version
 ```
 
-## Fork This Template
-
-Create your own late-bound plugin system:
+## Building Your Own Plugin
 
 1. Fork this repo
-2. Update `Taskfile.yml`:
-   ```yaml
-   GITHUB_USER: your-username
-   GITHUB_REPO: your-repo
-   ```
+2. Update `Taskfile.yml` with your GitHub user/repo
 3. Update `internal/version/version.go` with your repo
-4. Add plugins in `cmd/plugins/your-plugin/`
-5. Add `README.md` in each plugin folder (merged into generated docs)
-6. Run `task docs:generate`
-7. Tag `v0.1.0` to trigger first release
+4. Add your plugin in `cmd/plugins/your-plugin/`
+5. Tag a release to trigger CI
 
 See [MAINTAINERS.md](docs/MAINTAINERS.md) for details.
 
 ## Development
 
 ```sh
-task build:local        # build for host platform
-task build:all          # build all platforms
-task test:all           # run all tests
-task docs:generate      # regenerate docs from plugin READMEs
-task run:plugctl -- list
+task build:local          # build for current platform
+task build:all            # build all platforms
+task test:all             # run tests
+task run:plugctl -- list  # run plugctl
 ```
 
 ## License
