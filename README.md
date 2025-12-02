@@ -1,8 +1,8 @@
-# 3d-printers
+# plugs
 
 Late-bound plugin system with self-update from GitHub Releases.
 
-**Docs & Downloads:** https://joeblew999.github.io/3d-printers/
+**Docs & Downloads:** https://joeblew999.github.io/plugs/
 
 ## What This Is
 

@@ -15,7 +15,7 @@ var (
 	Version = "dev"
 	// These can be overridden at build time if needed
 	GitHubUser = "joeblew999"
-	GitHubRepo = "3d-printers"
+	GitHubRepo = "plugs"
 )
 
 // Info returns version and build info as a formatted string.
