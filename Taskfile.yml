@@ -285,7 +285,9 @@ tasks:
   cf:dns:
     desc: Open Cloudflare DNS settings for custom domain setup
     cmds:
-      - open "{{.CLOUDFLARE_DNS_URL}}"
+      - |
+        echo "Add CNAME: name=plugs target=joeblew999.github.io proxy=off"
+        open "{{.CLOUDFLARE_DNS_URL}}"
 
   # --- Run Tasks ---
 
