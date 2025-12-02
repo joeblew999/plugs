@@ -113,14 +113,73 @@ tasks:
       - task: fetch:benthos
 
   build:all:
-    desc: Build all external plugins
+    desc: Build all external plugins for all platforms
+    vars:
+      PLATFORMS: linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
     cmds:
-      - task: build:task
-      - task: build:task-ui
-      - task: build:conduit
-      - task: build:benthos
+      - for: { var: PLATFORMS, split: " " }
+        task: build:all:platform
+        vars:
+          OS: '{{index (splitList "/" .ITEM) 0}}'
+          ARCH: '{{index (splitList "/" .ITEM) 1}}'
+
+  build:all:platform:
+    internal: true
+    vars:
+      EXT: '{{if eq .OS "windows"}}.exe{{end}}'
+    cmds:
+      - echo "Building external plugins for {{.OS}}/{{.ARCH}}"
+      - cd {{.EXTERNAL_DIR}}/task && CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-task_{{.OS}}_{{.ARCH}}{{.EXT}} ./cmd/task
+      - cd {{.EXTERNAL_DIR}}/task-ui && CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-task-ui_{{.OS}}_{{.ARCH}}{{.EXT}} .
+      - cd {{.EXTERNAL_DIR}}/conduit && CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-conduit_{{.OS}}_{{.ARCH}}{{.EXT}} ./cmd/conduit
+      - cd {{.EXTERNAL_DIR}}/benthos && CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-benthos_{{.OS}}_{{.ARCH}}{{.EXT}} ./cmd/benthos
 
   clean:
     desc: Remove external plugin sources
     cmds:
       - rm -rf {{.EXTERNAL_DIR}}
+
+  # --- Release Helper (used by CI) ---
+
+  release:
+    desc: Build externals if changed, otherwise download from previous release
+    vars:
+      CHANGED:
+        sh: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            echo "true"
+          elif git diff $PREV_TAG HEAD -- plugins.json | grep -q '"external"'; then
+            echo "true"
+          else
+            echo "false"
+          fi
+    cmds:
+      - |
+        if [ "{{.CHANGED}}" = "true" ]; then
+          echo "External plugins changed, building from source..."
+          task ext:fetch:all
+          task ext:build:all
+        else
+          echo "No external changes, downloading from previous release..."
+          task ext:download:previous
+        fi
+
+  download:previous:
+    desc: Download external binaries from latest release
+    vars:
+      REPO: '{{.GITHUB_REPOSITORY | default "joeblew999/plugs"}}'
+      EXTERNALS: us-task us-task-ui us-conduit us-benthos
+      PLATFORMS: linux_amd64 linux_arm64 darwin_amd64 darwin_arm64 windows_amd64 windows_arm64
+    cmds:
+      - mkdir -p dist
+      - |
+        for bin in {{.EXTERNALS}}; do
+          for plat in {{.PLATFORMS}}; do
+            ext=""
+            [[ $plat == windows* ]] && ext=".exe"
+            echo "Downloading ${bin}_${plat}${ext}..."
+            curl -sL "https://github.com/{{.REPO}}/releases/latest/download/${bin}_${plat}${ext}" \
+              -o "dist/${bin}_${plat}${ext}" || echo "Warning: ${bin}_${plat}${ext} not found"
+          done
+        done

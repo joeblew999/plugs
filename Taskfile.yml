@@ -188,6 +188,7 @@ tasks:
     desc: Generate docs/index.md from template (uses Taskfile vars)
     cmds:
       - go run ./cmd/docgen
+      - task: docs:taskfiles
 
   docs:taskfiles:
     desc: Copy taskfiles to docs for remote access
