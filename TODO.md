@@ -63,3 +63,41 @@ We need to carefully design it so that the CLi and GUI use the same code and sta
 
 Because many users are not developers i favout the GUI opening off the binary, and then devs can somehow use the same binary to work at the CLI level. 
 
+
+---
+
+AI 
+
+https://github.com/ardanlabs/kronk can download and run local AI. 
+
+https://github.com/ardanlabs/kronk/releases/tag/v0.29.0
+
+We will def add this and a task fiel and docs for it !!!
+
+make sure its prefixed to look like our stuff actually..
+
+---
+
+https://github.com/pion/mediadevices needs CGO
+
+It will be used later for the Video demo and we will build this into our core.
+
+---
+
+https://github.com/smart-mcp-proxy/mcpproxy-go
+
+https://github.com/smart-mcp-proxy/mcpproxy-go/releases/tag/v0.10.8
+
+https://github.com/smart-mcp-proxy/mcpproxy-go/blob/v0.10.8/.github/workflows/release.yml shows some of the OS level calls that we need to do from our taskfile. We put it in the atsk file so that we can run it on the OS locally and in the CI matrix build.
+
+Investidate to see if we can use their Installer and Task try system ? 
+
+He has Windows and Mac 
+
+We might also use it to manage all MCP.
+
+Its keyring stuff is cool i guess. "mcpproxy secrets list" but not important right now. Vals from the helm project does it better i think.
+
+TO use this base we REALLY must make sure our taskfile and ci is aware of CGO build. This is a core things, and not a plugin.
+
+

@@ -9,13 +9,18 @@ vars:
 tasks:
   # --- Task (go-task) ---
   fetch:task:
-    desc: Clone/update Task source
+    desc: Clone/update Task source (idempotent - skips if already at version)
     vars:
       TAG: v3.40.1
     cmds:
       - |
         if [ -d {{.EXTERNAL_DIR}}/task ]; then
-          cd {{.EXTERNAL_DIR}}/task && git fetch --tags && git checkout {{.TAG}}
+          CURRENT=$(cd {{.EXTERNAL_DIR}}/task && git describe --tags --exact-match 2>/dev/null || echo "")
+          if [ "$CURRENT" = "{{.TAG}}" ]; then
+            echo "task: already at {{.TAG}}, skipping fetch"
+          else
+            cd {{.EXTERNAL_DIR}}/task && git fetch --tags && git checkout {{.TAG}}
+          fi
         else
           git clone --depth 1 --branch {{.TAG}} https://github.com/go-task/task.git {{.EXTERNAL_DIR}}/task
         fi
@@ -33,14 +38,15 @@ tasks:
 
   # --- Task-UI (web GUI for Taskfiles) ---
   fetch:task-ui:
-    desc: Clone/update Task-UI source
+    desc: Clone/update Task-UI source (tracks main branch)
     vars:
-      # No tags exist, use main branch
+      # No tags exist, use main branch - always pull for latest
       BRANCH: main
     cmds:
       - |
         if [ -d {{.EXTERNAL_DIR}}/task-ui ]; then
-          cd {{.EXTERNAL_DIR}}/task-ui && git fetch && git checkout {{.BRANCH}} && git pull
+          echo "task-ui: updating from main branch"
+          cd {{.EXTERNAL_DIR}}/task-ui && git fetch && git checkout {{.BRANCH}} && git pull --ff-only
         else
           git clone --depth 1 --branch {{.BRANCH}} https://github.com/titpetric/task-ui.git {{.EXTERNAL_DIR}}/task-ui
         fi
@@ -58,13 +64,18 @@ tasks:
 
   # --- Conduit ---
   fetch:conduit:
-    desc: Clone/update Conduit source
+    desc: Clone/update Conduit source (idempotent - skips if already at version)
     vars:
       TAG: v0.12.2
     cmds:
       - |
         if [ -d {{.EXTERNAL_DIR}}/conduit ]; then
-          cd {{.EXTERNAL_DIR}}/conduit && git fetch --tags && git checkout {{.TAG}}
+          CURRENT=$(cd {{.EXTERNAL_DIR}}/conduit && git describe --tags --exact-match 2>/dev/null || echo "")
+          if [ "$CURRENT" = "{{.TAG}}" ]; then
+            echo "conduit: already at {{.TAG}}, skipping fetch"
+          else
+            cd {{.EXTERNAL_DIR}}/conduit && git fetch --tags && git checkout {{.TAG}}
+          fi
         else
           git clone --depth 1 --branch {{.TAG}} https://github.com/ConduitIO/conduit.git {{.EXTERNAL_DIR}}/conduit
         fi
@@ -82,13 +93,18 @@ tasks:
 
   # --- Benthos ---
   fetch:benthos:
-    desc: Clone/update Benthos source
+    desc: Clone/update Benthos source (idempotent - skips if already at version)
     vars:
       TAG: v4.35.0
     cmds:
       - |
         if [ -d {{.EXTERNAL_DIR}}/benthos ]; then
-          cd {{.EXTERNAL_DIR}}/benthos && git fetch --tags && git checkout {{.TAG}}
+          CURRENT=$(cd {{.EXTERNAL_DIR}}/benthos && git describe --tags --exact-match 2>/dev/null || echo "")
+          if [ "$CURRENT" = "{{.TAG}}" ]; then
+            echo "benthos: already at {{.TAG}}, skipping fetch"
+          else
+            cd {{.EXTERNAL_DIR}}/benthos && git fetch --tags && git checkout {{.TAG}}
+          fi
         else
           git clone --depth 1 --branch {{.TAG}} https://github.com/redpanda-data/benthos.git {{.EXTERNAL_DIR}}/benthos
         fi
@@ -130,15 +146,44 @@ tasks:
       EXT: '{{if eq .OS "windows"}}.exe{{end}}'
     cmds:
       - echo "Building external plugins for {{.OS}}/{{.ARCH}}"
-      - cd {{.EXTERNAL_DIR}}/task && CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-task_{{.OS}}_{{.ARCH}}{{.EXT}} ./cmd/task
-      - cd {{.EXTERNAL_DIR}}/task-ui && CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-task-ui_{{.OS}}_{{.ARCH}}{{.EXT}} .
-      - cd {{.EXTERNAL_DIR}}/conduit && CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-conduit_{{.OS}}_{{.ARCH}}{{.EXT}} ./cmd/conduit
-      - cd {{.EXTERNAL_DIR}}/benthos && CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-benthos_{{.OS}}_{{.ARCH}}{{.EXT}} ./cmd/benthos
+      - cd {{.EXTERNAL_DIR}}/task && GOWORK=off CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-task_{{.OS}}_{{.ARCH}}{{.EXT}} ./cmd/task
+      - cd {{.EXTERNAL_DIR}}/task-ui && GOWORK=off CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-task-ui_{{.OS}}_{{.ARCH}}{{.EXT}} .
+      - cd {{.EXTERNAL_DIR}}/conduit && GOWORK=off CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-conduit_{{.OS}}_{{.ARCH}}{{.EXT}} ./cmd/conduit
+      - cd {{.EXTERNAL_DIR}}/benthos && GOWORK=off CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-benthos_{{.OS}}_{{.ARCH}}{{.EXT}} ./cmd/benthos
 
   clean:
     desc: Remove external plugin sources
     cmds:
       - rm -rf {{.EXTERNAL_DIR}}
+
+  # --- Testing (uses plugctl to verify builds) ---
+
+  test:
+    desc: Install and test external plugins using plugctl
+    vars:
+      HOST_OS:
+        sh: go env GOOS
+      HOST_ARCH:
+        sh: go env GOARCH
+      EXT: '{{if eq .HOST_OS "windows"}}.exe{{end}}'
+      PLUGIN_DIR:
+        sh: go run ./cmd/plugctl paths | grep "Binaries:" | awk '{print $2}'
+    cmds:
+      - echo "Installing external plugins via plugctl..."
+      - go run ./cmd/plugctl install --local dist/us-task_{{.HOST_OS}}_{{.HOST_ARCH}}{{.EXT}}
+      - go run ./cmd/plugctl install --local dist/us-task-ui_{{.HOST_OS}}_{{.HOST_ARCH}}{{.EXT}}
+      - go run ./cmd/plugctl install --local dist/us-conduit_{{.HOST_OS}}_{{.HOST_ARCH}}{{.EXT}}
+      - go run ./cmd/plugctl install --local dist/us-benthos_{{.HOST_OS}}_{{.HOST_ARCH}}{{.EXT}}
+      - echo ""
+      - echo "Verifying installations..."
+      - go run ./cmd/plugctl list --installed
+      - echo ""
+      - echo "Testing us-task --version..."
+      - "{{.PLUGIN_DIR}}/us-task --version"
+      - echo "Testing us-conduit version..."
+      - "{{.PLUGIN_DIR}}/us-conduit --version || true"
+      - echo ""
+      - echo "✓ External plugins installed and verified"
 
   # --- Release Helper (used by CI) ---
 

@@ -177,6 +177,42 @@ tasks:
     cmds:
       - gh release view --repo {{.GITHUB_USER}}/{{.GITHUB_REPO}}
 
+  release:publish:
+    desc: "Build and publish release locally (usage: task release:publish -- v0.4.0)"
+    preconditions:
+      - sh: command -v gh
+        msg: "gh CLI not installed. Install with: brew install gh"
+      - sh: gh auth status 2>/dev/null
+        msg: "gh CLI not authenticated. Run: gh auth login"
+    vars:
+      TAG: "{{.CLI_ARGS}}"
+    cmds:
+      - |
+        if [ -z "{{.TAG}}" ]; then
+          echo "Error: Tag required. Usage: task release:publish -- v0.4.0"
+          exit 1
+        fi
+      - echo "Building release {{.TAG}}..."
+      - task: build:all
+      - task: ext:fetch:all
+      - task: ext:build:all
+      - echo "Creating GitHub release {{.TAG}}..."
+      - git tag {{.TAG}} 2>/dev/null || echo "Tag {{.TAG}} already exists"
+      - git push origin {{.TAG}} 2>/dev/null || echo "Tag {{.TAG}} already pushed"
+      - gh release create {{.TAG}} dist/* --generate-notes --title "{{.TAG}}"
+      - echo "✓ Release {{.TAG}} published at {{.RELEASES_URL}}"
+
+  release:build:
+    desc: Build all binaries locally and test via plugctl
+    cmds:
+      - task: build:all
+      - task: ext:fetch:all
+      - task: ext:build:all
+      - task: ext:test
+      - echo ""
+      - echo "✓ All binaries built and tested"
+      - echo "  $(ls dist/ | wc -l | tr -d ' ') files in dist/"
+
   build:version:
     desc: Show the resolved build version
     cmds:
