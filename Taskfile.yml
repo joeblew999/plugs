@@ -34,8 +34,12 @@ vars:
   # Docs / GitHub Pages
   DOCS_DIR: docs
   DOCS_PORT: "8080"
-  PAGES_URL: https://{{.GITHUB_USER}}.github.io/{{.GITHUB_REPO}}
+  PAGES_URL: https://plugs.ubuntusoftware.net
   RELEASES_URL: https://github.com/{{.GITHUB_USER}}/{{.GITHUB_REPO}}/releases
+
+  # Cloudflare (for custom domain DNS)
+  CLOUDFLARE_ZONE: ubuntusoftware.net
+  CLOUDFLARE_DNS_URL: https://dash.cloudflare.com/?to=/:account/{{.CLOUDFLARE_ZONE}}/dns/records
 
 tasks:
   default:
@@ -265,7 +269,7 @@ tasks:
         fi
 
   gh:open:
-    desc: "Open a resource (usage: task gh:open -- repo|releases|actions|docs)"
+    desc: "Open a resource (usage: task gh:open -- repo|releases|actions|docs|dns)"
     cmds:
       - |
         case "{{.CLI_ARGS}}" in
@@ -273,7 +277,8 @@ tasks:
           releases) open "{{.RELEASES_URL}}" ;;
           actions) open "{{.REPO_URL}}/actions" ;;
           docs|pages) open "{{.PAGES_URL}}" ;;
-          *) echo "Usage: task gh:open -- repo|releases|actions|docs" ;;
+          dns|cloudflare) open "{{.CLOUDFLARE_DNS_URL}}" ;;
+          *) echo "Usage: task gh:open -- repo|releases|actions|docs|dns" ;;
         esac
 
   # --- Run Tasks ---

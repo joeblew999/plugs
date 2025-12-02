@@ -1,3 +1,9 @@
+[![Ubuntu Software](https://www.ubuntusoftware.net/images/logo.svg)](https://www.ubuntusoftware.net)
+
+*AI Infrastructure for Design and Documents*
+
+---
+
 # Hardware Control Plugins
 
 CLI tools for controlling hardware devices. Self-updating, no package manager required.
