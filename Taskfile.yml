@@ -269,7 +269,7 @@ tasks:
         fi
 
   gh:open:
-    desc: "Open a resource (usage: task gh:open -- repo|releases|actions|docs)"
+    desc: "Open a resource (usage: task gh:open -- repo|releases|actions|docs|settings)"
     cmds:
       - |
         case "{{.CLI_ARGS}}" in
@@ -277,7 +277,8 @@ tasks:
           releases) open "{{.RELEASES_URL}}" ;;
           actions) open "{{.REPO_URL}}/actions" ;;
           docs|pages) open "{{.PAGES_URL}}" ;;
-          *) echo "Usage: task gh:open -- repo|releases|actions|docs" ;;
+          settings) open "{{.REPO_URL}}/settings/pages" ;;
+          *) echo "Usage: task gh:open -- repo|releases|actions|docs|settings" ;;
         esac
 
   # --- Cloudflare ---
