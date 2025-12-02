@@ -1,0 +1,27 @@
+# fakeprinter - Mock printer server for testing
+# Remote include: https://plugs.ubuntusoftware.net/taskfiles/plugins/fakeprinter.yml
+version: "3"
+
+vars:
+  ADDR: '{{.ADDR | default ":8883"}}'
+
+tasks:
+  start:
+    desc: Start mock printer server
+    cmds:
+      - fakeprinter -addr {{.ADDR}}
+
+  update:
+    desc: Update fakeprinter to latest version
+    cmds:
+      - fakeprinter --update
+
+  docs:
+    desc: Open fakeprinter documentation
+    cmds:
+      - fakeprinter --docs
+
+  version:
+    desc: Show fakeprinter version
+    cmds:
+      - fakeprinter --version

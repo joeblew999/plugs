@@ -35,10 +35,23 @@ func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
 	checkUpdate := flag.Bool("check-update", false, "check for available updates")
 	doUpdate := flag.Bool("update", false, "update to latest release from GitHub")
+	openDocs := flag.Bool("docs", false, "open documentation in browser")
+	openDocsDev := flag.Bool("docs-dev", false, "open developer/technical docs in browser")
 	flag.Parse()
 
 	if *showVersion {
 		fmt.Println(version.Info())
+		os.Exit(0)
+	}
+
+	if *openDocs || *openDocsDev {
+		docType := version.DocMain
+		if *openDocsDev {
+			docType = version.DocTech
+		}
+		if err := version.OpenDocs(binaryName, docType); err != nil {
+			log.Fatalf("open docs: %v", err)
+		}
 		os.Exit(0)
 	}
 

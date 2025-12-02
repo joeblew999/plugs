@@ -1,5 +1,8 @@
 version: "3"
 
+includes:
+  ext: ./taskfiles/external.yml
+
 vars:
   # GitHub repository info (change these for your project)
   GITHUB_USER: joeblew999
@@ -7,13 +10,10 @@ vars:
   GO_MODULE: github.com/{{.GITHUB_USER}}/{{.GITHUB_REPO}}
   REPO_URL: https://github.com/{{.GITHUB_USER}}/{{.GITHUB_REPO}}
 
-  # Plugins (binaries in cmd/plugins/)
-  PLUGINS:
-    sh: ls -d cmd/plugins/*/ 2>/dev/null | xargs -I{} basename {} | tr '\n' ' ' | xargs
-  # Client tools (binaries in cmd/ root)
-  CLIENTS: plugctl
-  # All binaries to build (plugins + clients)
-  BINARIES: "{{.PLUGINS}} {{.CLIENTS}}"
+  # All binaries from plugins.json (falls back to directory scan)
+  # Note: binlist is in internal/, not cmd/ - it's a dev tool, not a released binary
+  BINARIES:
+    sh: go run ./internal/binlist 2>/dev/null || (ls -d cmd/plugins/*/ 2>/dev/null | xargs -I{} basename {} | tr '\n' ' ' && echo plugctl) | xargs
 
   # Build configuration
   DIST_DIR: dist
@@ -188,6 +188,13 @@ tasks:
     desc: Generate docs/index.md from template (uses Taskfile vars)
     cmds:
       - go run ./cmd/docgen
+
+  docs:taskfiles:
+    desc: Copy taskfiles to docs for remote access
+    cmds:
+      - mkdir -p docs/taskfiles
+      - cp -r taskfiles/* docs/taskfiles/
+      - echo "Taskfiles copied to docs/taskfiles/ for remote include"
 
   docs:serve:
     desc: Serve docs locally for preview
@@ -366,3 +373,66 @@ tasks:
         vars: { NAME: fakeprinter }
       - task: test:version
         vars: { NAME: x1ctl }
+
+  # --- CI Namespace (wrapper for GitHub Actions) ---
+
+  ci:test:
+    desc: Run all CI tests (wrapper for test:gorun)
+    cmds:
+      - task: test:unit
+      - task: test:gorun
+
+  ci:build:
+    desc: Build all binaries for CI (wrapper for build:all)
+    cmds:
+      - task: build:all
+
+  # --- Tests using go run (tests current code, not previous release) ---
+
+  test:gorun:
+    desc: Test CLI commands via go run
+    cmds:
+      - task: test:gorun:version
+      - task: test:gorun:docs
+      - task: test:gorun:paths
+      - task: test:gorun:selfupdate
+
+  test:gorun:version:
+    desc: Test version commands via go run
+    cmds:
+      - echo "=== Testing plugctl version ==="
+      - go run ./cmd/plugctl version
+      - echo "=== Testing x1ctl version ==="
+      - go run ./cmd/plugins/x1ctl version
+      - echo "=== Testing fakeprinter version ==="
+      - go run ./cmd/plugins/fakeprinter --version
+
+  test:gorun:docs:
+    desc: Test docs commands exist via go run
+    cmds:
+      - echo "=== Testing plugctl docs --help ==="
+      - go run ./cmd/plugctl docs --help
+      - echo "=== Testing x1ctl docs --help ==="
+      - go run ./cmd/plugins/x1ctl docs --help
+      - echo "=== Testing fakeprinter --docs (should show help) ==="
+      - go run ./cmd/plugins/fakeprinter --help 2>&1 | grep -q docs && echo "✓ --docs flag exists"
+
+  test:gorun:paths:
+    desc: Test plugctl paths command via go run
+    cmds:
+      - echo "=== Testing plugctl paths ==="
+      - go run ./cmd/plugctl paths
+      - echo "=== Testing plugctl list ==="
+      - go run ./cmd/plugctl list --installed || true
+
+  test:gorun:selfupdate:
+    desc: Test self-update location enforcement (should fail from wrong location)
+    cmds:
+      - echo "=== Testing self-update location enforcement ==="
+      - echo "Running x1ctl update from /tmp (should fail with guidance)..."
+      - |
+        # Build x1ctl to /tmp (wrong location)
+        go build -o /tmp/x1ctl-test ./cmd/plugins/x1ctl
+        # Try to update - should fail with helpful message
+        /tmp/x1ctl-test update 2>&1 | grep -q "self-update only works for managed binaries" && echo "✓ Correctly rejected update from wrong location"
+        rm -f /tmp/x1ctl-test

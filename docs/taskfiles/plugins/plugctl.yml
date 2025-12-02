@@ -1,0 +1,39 @@
+# plugctl - Plugin manager
+# Remote include: https://plugs.ubuntusoftware.net/taskfiles/plugins/plugctl.yml
+version: "3"
+
+tasks:
+  list:
+    desc: List available plugins
+    cmds:
+      - plugctl list {{.CLI_ARGS}}
+
+  installed:
+    desc: List installed plugins
+    cmds:
+      - plugctl list --installed
+
+  install:
+    desc: Install a plugin (usage: task plugctl:install -- x1ctl)
+    cmds:
+      - plugctl install {{.CLI_ARGS}}
+
+  update:
+    desc: Update all plugins
+    cmds:
+      - plugctl update
+
+  update-self:
+    desc: Update plugctl itself
+    cmds:
+      - plugctl update --self
+
+  docs:
+    desc: Open plugctl documentation
+    cmds:
+      - plugctl docs
+
+  version:
+    desc: Show plugctl version
+    cmds:
+      - plugctl version

@@ -13,14 +13,16 @@ var rootCmd = &cobra.Command{
 	Short: "Plugin manager for late-bound binary plugins",
 	Long: `plugctl manages plugins that self-update from GitHub Releases.
 
-Plugins are installed to ~/.plugctl/bin/ (or $PLUGCTL_BIN if set).
+Plugins install to ~/.local/bin/ubuntusoftware/ (override with $US_BIN).
 Add this directory to your PATH to use installed plugins.
 
 Example:
   plugctl list              # list available plugins
   plugctl install x1ctl     # install a plugin
   plugctl update            # update all plugins
-  plugctl update x1ctl      # update specific plugin`,
+  plugctl uninstall x1ctl   # remove a plugin
+  plugctl paths             # show install locations
+  plugctl clean             # remove all plugins`,
 }
 
 func Execute() {

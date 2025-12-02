@@ -30,16 +30,16 @@ jobs:
           version: "3.38.0"
 
       - name: Test
-        run: go test ./...
+        run: task ci:test
 
-      - name: Build matrix binaries
-        run: task build:all
+      - name: Build
+        run: task ci:build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: x1ctl-dist
+          name: plugs-dist
           path: dist/*
 
   release:
@@ -62,8 +62,13 @@ jobs:
         with:
           version: "3.38.0"
 
-      - name: Build matrix binaries
+      - name: Build local plugins
         run: task build:all
+
+      - name: Build or reuse external plugins
+        run: task ext:release
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2

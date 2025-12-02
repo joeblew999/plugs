@@ -9,7 +9,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/adrg/xdg"
 )
+
+// OrgName is the organization namespace for file paths.
+const OrgName = "ubuntusoftware"
 
 // PluginInfo holds information about an installed plugin.
 type PluginInfo struct {
@@ -19,16 +24,57 @@ type PluginInfo struct {
 }
 
 // PluginDir returns the plugin install directory.
-// Respects PLUGCTL_BIN env var, defaults to ~/.plugctl/bin
+// Priority: US_BIN env > PLUGCTL_BIN env (legacy) > XDG bin home
+// Cross-platform paths:
+//   - Linux: ~/.local/bin/ubuntusoftware
+//   - macOS: ~/.local/bin/ubuntusoftware
+//   - Windows: %LOCALAPPDATA%/ubuntusoftware/bin
 func PluginDir() string {
-	if dir := os.Getenv("PLUGCTL_BIN"); dir != "" {
+	// Check env overrides
+	if dir := os.Getenv("US_BIN"); dir != "" {
 		return dir
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return filepath.Join(".", ".plugctl", "bin")
+	if dir := os.Getenv("PLUGCTL_BIN"); dir != "" {
+		return dir // legacy support
 	}
-	return filepath.Join(home, ".plugctl", "bin")
+	// Use XDG bin home with org namespace
+	return filepath.Join(xdg.BinHome, OrgName)
+}
+
+// DataDir returns the data directory for storing app data.
+// Cross-platform paths:
+//   - Linux: ~/.local/share/ubuntusoftware
+//   - macOS: ~/Library/Application Support/ubuntusoftware
+//   - Windows: %LOCALAPPDATA%/ubuntusoftware
+func DataDir() string {
+	if dir := os.Getenv("US_DATA"); dir != "" {
+		return dir
+	}
+	return filepath.Join(xdg.DataHome, OrgName)
+}
+
+// ConfigDir returns the config directory.
+// Cross-platform paths:
+//   - Linux: ~/.config/ubuntusoftware
+//   - macOS: ~/Library/Application Support/ubuntusoftware
+//   - Windows: %LOCALAPPDATA%/ubuntusoftware
+func ConfigDir() string {
+	if dir := os.Getenv("US_CONFIG"); dir != "" {
+		return dir
+	}
+	return filepath.Join(xdg.ConfigHome, OrgName)
+}
+
+// CacheDir returns the cache directory.
+// Cross-platform paths:
+//   - Linux: ~/.cache/ubuntusoftware
+//   - macOS: ~/Library/Caches/ubuntusoftware
+//   - Windows: %LOCALAPPDATA%/ubuntusoftware/cache
+func CacheDir() string {
+	if dir := os.Getenv("US_CACHE"); dir != "" {
+		return dir
+	}
+	return filepath.Join(xdg.CacheHome, OrgName)
 }
 
 // EnsurePluginDir creates the plugin directory if it doesn't exist.

@@ -1,53 +1,70 @@
-# 3D Printer Tools
+# plugs
 
-Control your Bambu Lab X1 printer over LAN. No cloud required.
+Self-updating plugin system for Go binaries.
 
-## What's Here
+---
 
-**x1ctl** - Command-line tool to connect to your Bambu Lab X1 printer over your local network. Check status, send commands, and monitor prints without going through Bambu's cloud.
+## I'm an End User
 
-**fakeprinter** - A mock printer server for testing and development. Useful if you want to build tools without a real printer connected.
+*I just want to control my printer.*
 
-**plugctl** - Plugin manager for installing and updating tools. Manages plugins in `~/.plugctl/bin/`.
+Download `x1ctl` for your platform:
 
-## Quick Start
-
-1. Download the binary for your system from the table below
-2. Enable LAN Mode on your printer and note the IP address and access code
-3. Run: `x1ctl status --ip YOUR_PRINTER_IP --access-code YOUR_CODE`
-
-## Downloads
-
-Pick your platform:
-
-{{.DownloadTable}}
-Or get all binaries from [GitHub Releases]({{.ReleasesURL}}/latest).
-
-## Keeping Up to Date
-
-All tools can update themselves. No need to re-download manually:
+{{.EndUserDownloads}}
 
 ```sh
-x1ctl update           # updates x1ctl to latest
-fakeprinter --update   # updates fakeprinter to latest
-plugctl update         # updates all installed plugins
+./x1ctl status --ip 192.168.1.x --access-code XXX
+./x1ctl update    # self-update
 ```
 
-## Plugins
+**Docs:** [x1ctl](plugins/x1ctl.md) · [Bambu X1 Guide](bambu_x1_user.md)
 
-{{.PluginLinks}}
-See individual plugin pages for detailed documentation.
+---
 
-## Documentation
+## I'm an Operator
 
-- **[Bambu X1 User Guide](bambu_x1_user.md)** - How to connect and use x1ctl with your printer
-- **[Bambu X1 Technical](bambu_x1_tech.md)** - Protocol details for developers
-- **[Fake Printer Guide](fake_printer_user.md)** - Running the mock server for testing
+*I manage tools and run automation.*
 
-## Contributing
+Download `plugctl` to manage everything:
 
-Found a bug? Want to add a feature?
+{{.OperatorDownloads}}
 
-- [File an issue]({{.RepoURL}}/issues)
-- [View source on GitHub]({{.RepoURL}})
-- [Fork this template](MAINTAINERS.md) for your own Go binary projects
+```sh
+# Install plugins
+plugctl install x1ctl us-task us-task-ui
+plugctl list --installed
+plugctl update
+
+# Run Taskfiles
+us-task --list
+us-task-ui    # web GUI
+```
+
+**Install location:** `~/.local/bin/ubuntusoftware/` (Linux/macOS) or `%LOCALAPPDATA%\ubuntusoftware\bin\` (Windows). Add to PATH. See [plugctl user guide](plugins/plugctl_user.md) for details.
+
+**Available plugins:**
+
+{{.PluginTable}}
+
+---
+
+## I'm a Developer
+
+*I want to build or extend plugins.*
+
+```sh
+git clone {{.RepoURL}} && cd plugs
+task build:local      # build for current platform
+task ext:build:all    # build external plugins (us-*)
+task docs:generate    # regenerate docs
+```
+
+**Docs:** [MAINTAINERS.md](MAINTAINERS.md) · [GitHub]({{.RepoURL}})
+
+---
+
+## All Downloads
+
+{{.DownloadTable}}
+
+[GitHub Releases]({{.ReleasesURL}}/latest) · [File an Issue]({{.RepoURL}}/issues)

@@ -1,0 +1,126 @@
+# External plugins - fetch from upstream repos and build
+# These are third-party tools we want to include in our distribution.
+# Developers only - not for end users or operators.
+version: "3"
+
+vars:
+  EXTERNAL_DIR: external
+
+tasks:
+  # --- Task (go-task) ---
+  fetch:task:
+    desc: Clone/update Task source
+    vars:
+      TAG: v3.40.1
+    cmds:
+      - |
+        if [ -d {{.EXTERNAL_DIR}}/task ]; then
+          cd {{.EXTERNAL_DIR}}/task && git fetch --tags && git checkout {{.TAG}}
+        else
+          git clone --depth 1 --branch {{.TAG}} https://github.com/go-task/task.git {{.EXTERNAL_DIR}}/task
+        fi
+
+  build:task:
+    desc: Build Task binary (as us-task)
+    deps: [fetch:task]
+    cmds:
+      - cd {{.EXTERNAL_DIR}}/task && go build -o ../../dist/us-task_{{.OS}}_{{.ARCH}} ./cmd/task
+    vars:
+      OS:
+        sh: go env GOOS
+      ARCH:
+        sh: go env GOARCH
+
+  # --- Task-UI (web GUI for Taskfiles) ---
+  fetch:task-ui:
+    desc: Clone/update Task-UI source
+    vars:
+      TAG: v0.0.3
+    cmds:
+      - |
+        if [ -d {{.EXTERNAL_DIR}}/task-ui ]; then
+          cd {{.EXTERNAL_DIR}}/task-ui && git fetch --tags && git checkout {{.TAG}}
+        else
+          git clone --depth 1 --branch {{.TAG}} https://github.com/titpetric/task-ui.git {{.EXTERNAL_DIR}}/task-ui
+        fi
+
+  build:task-ui:
+    desc: Build Task-UI binary (as us-task-ui)
+    deps: [fetch:task-ui]
+    cmds:
+      - cd {{.EXTERNAL_DIR}}/task-ui && go build -o ../../dist/us-task-ui_{{.OS}}_{{.ARCH}} .
+    vars:
+      OS:
+        sh: go env GOOS
+      ARCH:
+        sh: go env GOARCH
+
+  # --- Conduit ---
+  fetch:conduit:
+    desc: Clone/update Conduit source
+    vars:
+      TAG: v0.12.2
+    cmds:
+      - |
+        if [ -d {{.EXTERNAL_DIR}}/conduit ]; then
+          cd {{.EXTERNAL_DIR}}/conduit && git fetch --tags && git checkout {{.TAG}}
+        else
+          git clone --depth 1 --branch {{.TAG}} https://github.com/ConduitIO/conduit.git {{.EXTERNAL_DIR}}/conduit
+        fi
+
+  build:conduit:
+    desc: Build Conduit binary (as us-conduit)
+    deps: [fetch:conduit]
+    cmds:
+      - cd {{.EXTERNAL_DIR}}/conduit && go build -o ../../dist/us-conduit_{{.OS}}_{{.ARCH}} ./cmd/conduit
+    vars:
+      OS:
+        sh: go env GOOS
+      ARCH:
+        sh: go env GOARCH
+
+  # --- Benthos ---
+  fetch:benthos:
+    desc: Clone/update Benthos source
+    vars:
+      TAG: v4.35.0
+    cmds:
+      - |
+        if [ -d {{.EXTERNAL_DIR}}/benthos ]; then
+          cd {{.EXTERNAL_DIR}}/benthos && git fetch --tags && git checkout {{.TAG}}
+        else
+          git clone --depth 1 --branch {{.TAG}} https://github.com/redpanda-data/benthos.git {{.EXTERNAL_DIR}}/benthos
+        fi
+
+  build:benthos:
+    desc: Build Benthos binary (as us-benthos)
+    deps: [fetch:benthos]
+    cmds:
+      - cd {{.EXTERNAL_DIR}}/benthos && go build -o ../../dist/us-benthos_{{.OS}}_{{.ARCH}} ./cmd/benthos
+    vars:
+      OS:
+        sh: go env GOOS
+      ARCH:
+        sh: go env GOARCH
+
+  # --- All External ---
+  fetch:all:
+    desc: Fetch all external plugin sources
+    cmds:
+      - task: fetch:task
+      - task: fetch:task-ui
+      - task: fetch:conduit
+      - task: fetch:benthos
+
+  build:all:
+    desc: Build all external plugins
+    cmds:
+      - task: build:task
+      - task: build:task-ui
+      - task: build:conduit
+      - task: build:benthos
+
+  clean:
+    desc: Remove external plugin sources
+    cmds:
+      - rm -rf {{.EXTERNAL_DIR}}

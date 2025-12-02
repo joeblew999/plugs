@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -16,6 +18,8 @@ var (
 	// These can be overridden at build time if needed
 	GitHubUser = "joeblew999"
 	GitHubRepo = "plugs"
+	// DocsHost is where plugin docs are hosted
+	DocsHost = "plugs.ubuntusoftware.net"
 )
 
 // Info returns version and build info as a formatted string.
@@ -80,16 +84,38 @@ func DownloadURL(binaryName string) string {
 }
 
 // SelfUpdate downloads and replaces the current binary with the latest release.
+// Only works if the binary is in PluginDir() (installed via plugctl).
+// For binaries outside PluginDir, use plugctl update instead.
 func SelfUpdate(binaryName string) error {
-	url := DownloadURL(binaryName)
-
 	// Get current executable path
 	execPath, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("get executable path: %w", err)
 	}
 
+	// Resolve symlinks to get real path
+	execPath, err = filepath.EvalSymlinks(execPath)
+	if err != nil {
+		return fmt.Errorf("resolve path: %w", err)
+	}
+
+	// Check if binary is in PluginDir (installer-enforced location)
+	expectedDir := PluginDir()
+	actualDir := filepath.Dir(execPath)
+
+	if actualDir != expectedDir {
+		return fmt.Errorf(
+			"self-update only works for managed binaries\n"+
+				"  Current location: %s\n"+
+				"  Expected location: %s\n\n"+
+				"To update, either:\n"+
+				"  1. Run: plugctl update %s\n"+
+				"  2. Move binary to %s and try again",
+			execPath, expectedDir, binaryName, expectedDir)
+	}
+
 	// Download new binary
+	url := DownloadURL(binaryName)
 	resp, err := http.Get(url)
 	if err != nil {
 		return fmt.Errorf("download: %w", err)
@@ -103,8 +129,8 @@ func SelfUpdate(binaryName string) error {
 		return fmt.Errorf("download failed: %s", resp.Status)
 	}
 
-	// Write to temp file
-	tmpFile, err := os.CreateTemp("", binaryName+"-update-*")
+	// Write to temp file in same directory (for atomic rename)
+	tmpFile, err := os.CreateTemp(expectedDir, binaryName+"-update-*")
 	if err != nil {
 		return fmt.Errorf("create temp file: %w", err)
 	}
@@ -129,6 +155,69 @@ func SelfUpdate(binaryName string) error {
 	}
 
 	return nil
+}
+
+// DocType represents the type of documentation.
+type DocType string
+
+const (
+	DocMain DocType = ""     // Main plugin page
+	DocUser DocType = "user" // End user guide
+	DocTech DocType = "tech" // Developer/technical docs
+)
+
+// DocsURL returns the documentation URL for a plugin.
+// If pluginName is empty, returns the main docs page.
+// docType specifies user/tech docs, empty for main page.
+func DocsURL(pluginName string, docType ...DocType) string {
+	if pluginName == "" {
+		return fmt.Sprintf("https://%s", DocsHost)
+	}
+	dt := DocMain
+	if len(docType) > 0 {
+		dt = docType[0]
+	}
+	if dt == "" {
+		return fmt.Sprintf("https://%s/plugins/%s.html", DocsHost, pluginName)
+	}
+	return fmt.Sprintf("https://%s/plugins/%s_%s.html", DocsHost, pluginName, dt)
+}
+
+// TaskfileURL returns the remote taskfile URL for a plugin.
+func TaskfileURL(pluginName string) string {
+	return fmt.Sprintf("https://%s/taskfiles/plugins/%s.yml", DocsHost, pluginName)
+}
+
+// OpenDocs opens the plugin's documentation in the default browser.
+func OpenDocs(pluginName string, docType ...DocType) error {
+	url := DocsURL(pluginName, docType...)
+	return openBrowser(url)
+}
+
+// openBrowser opens a URL in the system's default browser.
+func openBrowser(url string) error {
+	var cmd string
+	var args []string
+
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = "open"
+		args = []string{url}
+	case "windows":
+		cmd = "cmd"
+		args = []string{"/c", "start", url}
+	default: // linux, etc.
+		cmd = "xdg-open"
+		args = []string{url}
+	}
+
+	return execCommand(cmd, args...)
+}
+
+// execCommand runs a command.
+func execCommand(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	return cmd.Start()
 }
 
 func copyFile(src, dst string) error {

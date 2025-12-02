@@ -1,0 +1,38 @@
+# x1ctl - Bambu Lab X1 printer control
+# Remote include: https://plugs.ubuntusoftware.net/taskfiles/plugins/x1ctl.yml
+version: "3"
+
+vars:
+  IP: '{{.IP | default ""}}'
+  ACCESS_CODE: '{{.ACCESS_CODE | default ""}}'
+
+tasks:
+  status:
+    desc: Check printer status
+    cmds:
+      - x1ctl status --ip {{.IP}} --access-code {{.ACCESS_CODE}} {{.CLI_ARGS}}
+
+  read:
+    desc: Read printer values
+    cmds:
+      - x1ctl read --ip {{.IP}} --access-code {{.ACCESS_CODE}} {{.CLI_ARGS}}
+
+  echo:
+    desc: Send echo command
+    cmds:
+      - x1ctl echo --ip {{.IP}} --access-code {{.ACCESS_CODE}} {{.CLI_ARGS}}
+
+  update:
+    desc: Update x1ctl to latest version
+    cmds:
+      - x1ctl update
+
+  docs:
+    desc: Open x1ctl documentation
+    cmds:
+      - x1ctl docs
+
+  version:
+    desc: Show x1ctl version
+    cmds:
+      - x1ctl version

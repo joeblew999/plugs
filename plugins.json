@@ -1,0 +1,54 @@
+{
+  "version": "1",
+  "plugins": [
+    {
+      "name": "x1ctl",
+      "description": "CLI for Bambu Lab X1 printers (LAN mode)",
+      "path": "cmd/plugins/x1ctl",
+      "style": "cobra"
+    },
+    {
+      "name": "fakeprinter",
+      "description": "Mock printer server for testing",
+      "path": "cmd/plugins/fakeprinter",
+      "style": "flags"
+    },
+    {
+      "name": "plugctl",
+      "description": "Plugin manager",
+      "path": "cmd/plugctl",
+      "style": "cobra",
+      "manager": true
+    }
+  ],
+  "external": [
+    {
+      "name": "task",
+      "alias": "us-task",
+      "repo": "github.com/go-task/task",
+      "tag": "v3.40.1",
+      "path": "cmd/task"
+    },
+    {
+      "name": "task-ui",
+      "alias": "us-task-ui",
+      "repo": "github.com/titpetric/task-ui",
+      "tag": "v0.0.3",
+      "path": "."
+    },
+    {
+      "name": "conduit",
+      "alias": "us-conduit",
+      "repo": "github.com/ConduitIO/conduit",
+      "tag": "v0.12.2",
+      "path": "cmd/conduit"
+    },
+    {
+      "name": "benthos",
+      "alias": "us-benthos",
+      "repo": "github.com/redpanda-data/benthos",
+      "tag": "v4.35.0",
+      "path": "cmd/benthos"
+    }
+  ]
+}

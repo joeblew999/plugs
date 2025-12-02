@@ -1,86 +1,106 @@
 # plugs
 
-A plugin system for Go binaries that talk to hardware. Self-updates from GitHub Releases.
+Self-updating plugin system for Go binaries. **Docs:** https://plugs.ubuntusoftware.net
 
-**Docs:** https://plugs.ubuntusoftware.net
+## Quick Start
 
-## Hosting
+| You Are | Download | Then Run |
+|---------|----------|----------|
+| **End User** | `x1ctl` | `./x1ctl status --ip ... --access-code ...` |
+| **Operator** | `plugctl` + `us-task` | `plugctl install x1ctl` / `us-task --list` |
+| **Developer** | Clone repo | `task build:local` |
 
-- **Docs & Binaries:** GitHub Pages + GitHub Releases
-- **DNS:** Cloudflare (`plugs.ubuntusoftware.net` → GitHub Pages)
+## Binaries
 
-## Overview
+| Binary | Who | What |
+|--------|-----|------|
+| `x1ctl` | End User | Control Bambu Lab X1 printers |
+| `fakeprinter` | End User | Mock printer for testing |
+| `plugctl` | Operator | Install/update plugins |
+| `us-task` | Operator | Run Taskfiles (our Task build) |
+| `us-task-ui` | Operator | Web GUI for Taskfiles |
+| `us-conduit` | Operator | Data pipelines |
+| `us-benthos` | Operator | Stream processing |
 
-Plugs provides a framework for building CLI tools that communicate with hardware devices (printers, IoT, embedded systems) and distribute them as self-updating binaries.
+All binaries self-update: `x1ctl update` or `plugctl update`
 
-Features:
-- Self-update from GitHub Releases (no package manager required)
-- User-local installs to `~/.plugctl/bin/` (no sudo)
-- Central management via `plugctl`
-- Cross-platform: Linux, macOS, Windows (amd64/arm64)
+## End Users
 
-## Plugins
-
-| Plugin | Description |
-|--------|-------------|
-| `x1ctl` | CLI for Bambu Lab X1 printers (LAN mode) |
-| `fakeprinter` | Mock printer server for testing |
-
-## Install
-
-Download `plugctl` from [Releases](https://github.com/joeblew999/plugs/releases/latest), then:
+Download from [Releases](https://github.com/joeblew999/plugs/releases/latest):
 
 ```sh
-plugctl install x1ctl       # install a plugin
-plugctl list                # list available plugins
-plugctl list --installed    # list installed plugins
+./x1ctl status --ip 192.168.1.x --access-code XXX
+./x1ctl update    # self-update
+./x1ctl docs      # open documentation
 ```
 
-Add `~/.plugctl/bin` to your PATH.
+## Operators
 
-## Usage
-
-### Managing Plugins
+Manage plugins and run Taskfiles:
 
 ```sh
-plugctl install x1ctl                # install from GitHub releases
-plugctl install --local ./my-binary  # install local build
-plugctl update                       # update all plugins
-plugctl update x1ctl                 # update specific plugin
-plugctl update --self                # update plugctl itself
-plugctl version --check              # check for updates
-plugctl version --all                # show all installed versions
+# Install plugins
+plugctl install x1ctl us-task us-task-ui
+plugctl list --installed
+plugctl update
+
+# Run tasks
+us-task --list
+us-task-ui        # opens web GUI
 ```
 
-### Plugin Self-Update
+### Install Locations
 
-Every plugin can update itself:
+Plugins install to dedicated directories (XDG-compliant):
+
+| Platform | Binaries | Data |
+|----------|----------|------|
+| **Linux** | `~/.local/bin/ubuntusoftware/` | `~/.local/share/ubuntusoftware/` |
+| **macOS** | `~/.local/bin/ubuntusoftware/` | `~/Library/Application Support/ubuntusoftware/` |
+| **Windows** | `%LOCALAPPDATA%\ubuntusoftware\bin\` | `%LOCALAPPDATA%\ubuntusoftware\` |
+
+Add to PATH, or override with `US_BIN` env var. See [plugctl docs](https://plugs.ubuntusoftware.net/plugins/plugctl_user.html) for details.
+
+## Developers
 
 ```sh
-x1ctl update              # update x1ctl
-x1ctl version --check     # check for updates
-fakeprinter --update      # update fakeprinter (flag-based CLI)
-fakeprinter --version     # show version
+git clone https://github.com/joeblew999/plugs && cd plugs
+task build:local      # build for current platform
+task ext:build:all    # build external plugins (us-*)
+task docs:generate    # regenerate docs
 ```
 
-## Building Your Own Plugin
+### Adding Plugins
+
+1. Add code in `cmd/plugins/your-plugin/`
+2. Add entry to `plugins.json`
+3. `task build:local && task docs:generate`
+4. Tag release → CI builds all platforms
+
+### Project Structure
+
+```
+cmd/plugins/          # End user binaries
+cmd/plugctl/          # Operator binary
+internal/             # Dev tools (not released)
+plugins.json          # Source of truth
+taskfiles/external.yml # External plugin builds
+```
+
+## Naming
+
+- Local plugins: `x1ctl`, `fakeprinter`, `plugctl`
+- External plugins: `us-*` prefix (avoids conflicts)
+
+## Registry
+
+`plugins.json` is the central registry. To add a plugin:
 
 1. Fork this repo
-2. Update `Taskfile.yml` with your GitHub user/repo
-3. Update `internal/version/version.go` with your repo
-4. Add your plugin in `cmd/plugins/your-plugin/`
-5. Tag a release to trigger CI
+2. Add your plugin to `plugins.json`
+3. Submit a PR
 
-See [MAINTAINERS.md](docs/MAINTAINERS.md) for details.
-
-## Development
-
-```sh
-task build:local          # build for current platform
-task build:all            # build all platforms
-task test:all             # run tests
-task run:plugctl -- list  # run plugctl
-```
+We build and release all registered plugins.
 
 ## License
 

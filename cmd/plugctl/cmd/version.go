@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/joeblew999/plugs/internal/version"
@@ -110,10 +109,10 @@ func init() {
 		}
 	}
 
-	// Add PATH hint to root help
+	// Add PATH hint to root help - use dynamic path from version package
 	rootCmd.SetUsageTemplate(rootCmd.UsageTemplate() + fmt.Sprintf(`
 Plugin Directory:
   %s
   Add this to your PATH to use installed plugins.
-`, filepath.Join("~", ".plugctl", "bin")))
+`, version.PluginDir()))
 }

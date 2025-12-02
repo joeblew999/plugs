@@ -1,16 +1,31 @@
 # todo
 
-Add domain fronting off cloudflare, using simple task file calls, and adjustment to the github pages setup.
+---
+
+https://docs.viam.com/dev/
+
+We are headinfg to this.
+
+go-judge will allow a real time codign experience of these plugins, and so we will need to incldue this as a server.
+
+
 
 ---
 
-https://github.com/titpetric/task-ui might work good ?
+
+https://github.com/titpetric/task-ui might work good ? 
 
 ---
 
-Move it all to https://github.com/joeblew999/plugs
+Work out how to add things on our hugo website to show the apps that we run. plugins is just one and will grow quickly.
 
-- /Users/apple/workspace/go/src/github.com/joeblew999/plugs is there.
+Also this plugins repo is really a base that ALL our deployed projects could use. this is why we have the task file.  the only thing missing is a fly.io cli and docker and a server example. 
+
+The server could be a nats servers that the plugin system uses, and so we end up with a generic and extensible deployment system. 
+
+We need to think hard about this because these thngs become rerally hard later. You example, we dont release the atsk file at the monent and yet each proejct will need it.  Its the self simialr pattern ? 
+
+
 
 ---
 
@@ -29,11 +44,19 @@ It will be a golang thing, and when the cli is done can expose it ion the taskfi
 
 they are all golang proejcts btw so pretty easy. 
 
+All these pluigns have. no CGO, so build matrix is no problem.
+
+
 ---
 
 GUI as well as CLI
 
 https://github.com/guigui-gui/guigui is really easy to use.
+
+https://github.com/go-via/via is my realtime htmx patterns web gui system.
+
+I dont know what my users prefer
+
 
 We can combine it into the CLI, so that it opens automatically.
 We need to carefully design it so that the CLi and GUI use the same code and stay dry.

@@ -1,0 +1,185 @@
+# External plugins - fetch from upstream repos and build
+# These are third-party tools we want to include in our distribution.
+# Developers only - not for end users or operators.
+version: "3"
+
+vars:
+  EXTERNAL_DIR: external
+
+tasks:
+  # --- Task (go-task) ---
+  fetch:task:
+    desc: Clone/update Task source
+    vars:
+      TAG: v3.40.1
+    cmds:
+      - |
+        if [ -d {{.EXTERNAL_DIR}}/task ]; then
+          cd {{.EXTERNAL_DIR}}/task && git fetch --tags && git checkout {{.TAG}}
+        else
+          git clone --depth 1 --branch {{.TAG}} https://github.com/go-task/task.git {{.EXTERNAL_DIR}}/task
+        fi
+
+  build:task:
+    desc: Build Task binary (as us-task)
+    deps: [fetch:task]
+    cmds:
+      - cd {{.EXTERNAL_DIR}}/task && go build -o ../../dist/us-task_{{.OS}}_{{.ARCH}} ./cmd/task
+    vars:
+      OS:
+        sh: go env GOOS
+      ARCH:
+        sh: go env GOARCH
+
+  # --- Task-UI (web GUI for Taskfiles) ---
+  fetch:task-ui:
+    desc: Clone/update Task-UI source
+    vars:
+      TAG: v0.0.3
+    cmds:
+      - |
+        if [ -d {{.EXTERNAL_DIR}}/task-ui ]; then
+          cd {{.EXTERNAL_DIR}}/task-ui && git fetch --tags && git checkout {{.TAG}}
+        else
+          git clone --depth 1 --branch {{.TAG}} https://github.com/titpetric/task-ui.git {{.EXTERNAL_DIR}}/task-ui
+        fi
+
+  build:task-ui:
+    desc: Build Task-UI binary (as us-task-ui)
+    deps: [fetch:task-ui]
+    cmds:
+      - cd {{.EXTERNAL_DIR}}/task-ui && go build -o ../../dist/us-task-ui_{{.OS}}_{{.ARCH}} .
+    vars:
+      OS:
+        sh: go env GOOS
+      ARCH:
+        sh: go env GOARCH
+
+  # --- Conduit ---
+  fetch:conduit:
+    desc: Clone/update Conduit source
+    vars:
+      TAG: v0.12.2
+    cmds:
+      - |
+        if [ -d {{.EXTERNAL_DIR}}/conduit ]; then
+          cd {{.EXTERNAL_DIR}}/conduit && git fetch --tags && git checkout {{.TAG}}
+        else
+          git clone --depth 1 --branch {{.TAG}} https://github.com/ConduitIO/conduit.git {{.EXTERNAL_DIR}}/conduit
+        fi
+
+  build:conduit:
+    desc: Build Conduit binary (as us-conduit)
+    deps: [fetch:conduit]
+    cmds:
+      - cd {{.EXTERNAL_DIR}}/conduit && go build -o ../../dist/us-conduit_{{.OS}}_{{.ARCH}} ./cmd/conduit
+    vars:
+      OS:
+        sh: go env GOOS
+      ARCH:
+        sh: go env GOARCH
+
+  # --- Benthos ---
+  fetch:benthos:
+    desc: Clone/update Benthos source
+    vars:
+      TAG: v4.35.0
+    cmds:
+      - |
+        if [ -d {{.EXTERNAL_DIR}}/benthos ]; then
+          cd {{.EXTERNAL_DIR}}/benthos && git fetch --tags && git checkout {{.TAG}}
+        else
+          git clone --depth 1 --branch {{.TAG}} https://github.com/redpanda-data/benthos.git {{.EXTERNAL_DIR}}/benthos
+        fi
+
+  build:benthos:
+    desc: Build Benthos binary (as us-benthos)
+    deps: [fetch:benthos]
+    cmds:
+      - cd {{.EXTERNAL_DIR}}/benthos && go build -o ../../dist/us-benthos_{{.OS}}_{{.ARCH}} ./cmd/benthos
+    vars:
+      OS:
+        sh: go env GOOS
+      ARCH:
+        sh: go env GOARCH
+
+  # --- All External ---
+  fetch:all:
+    desc: Fetch all external plugin sources
+    cmds:
+      - task: fetch:task
+      - task: fetch:task-ui
+      - task: fetch:conduit
+      - task: fetch:benthos
+
+  build:all:
+    desc: Build all external plugins for all platforms
+    vars:
+      PLATFORMS: linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
+    cmds:
+      - for: { var: PLATFORMS, split: " " }
+        task: build:all:platform
+        vars:
+          OS: '{{index (splitList "/" .ITEM) 0}}'
+          ARCH: '{{index (splitList "/" .ITEM) 1}}'
+
+  build:all:platform:
+    internal: true
+    vars:
+      EXT: '{{if eq .OS "windows"}}.exe{{end}}'
+    cmds:
+      - echo "Building external plugins for {{.OS}}/{{.ARCH}}"
+      - cd {{.EXTERNAL_DIR}}/task && CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-task_{{.OS}}_{{.ARCH}}{{.EXT}} ./cmd/task
+      - cd {{.EXTERNAL_DIR}}/task-ui && CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-task-ui_{{.OS}}_{{.ARCH}}{{.EXT}} .
+      - cd {{.EXTERNAL_DIR}}/conduit && CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-conduit_{{.OS}}_{{.ARCH}}{{.EXT}} ./cmd/conduit
+      - cd {{.EXTERNAL_DIR}}/benthos && CGO_ENABLED=0 GOOS={{.OS}} GOARCH={{.ARCH}} go build -o ../../dist/us-benthos_{{.OS}}_{{.ARCH}}{{.EXT}} ./cmd/benthos
+
+  clean:
+    desc: Remove external plugin sources
+    cmds:
+      - rm -rf {{.EXTERNAL_DIR}}
+
+  # --- Release Helper (used by CI) ---
+
+  release:
+    desc: Build externals if changed, otherwise download from previous release
+    vars:
+      CHANGED:
+        sh: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            echo "true"
+          elif git diff $PREV_TAG HEAD -- plugins.json | grep -q '"external"'; then
+            echo "true"
+          else
+            echo "false"
+          fi
+    cmds:
+      - |
+        if [ "{{.CHANGED}}" = "true" ]; then
+          echo "External plugins changed, building from source..."
+          task ext:fetch:all
+          task ext:build:all
+        else
+          echo "No external changes, downloading from previous release..."
+          task ext:download:previous
+        fi
+
+  download:previous:
+    desc: Download external binaries from latest release
+    vars:
+      REPO: '{{.GITHUB_REPOSITORY | default "joeblew999/plugs"}}'
+      EXTERNALS: us-task us-task-ui us-conduit us-benthos
+      PLATFORMS: linux_amd64 linux_arm64 darwin_amd64 darwin_arm64 windows_amd64 windows_arm64
+    cmds:
+      - mkdir -p dist
+      - |
+        for bin in {{.EXTERNALS}}; do
+          for plat in {{.PLATFORMS}}; do
+            ext=""
+            [[ $plat == windows* ]] && ext=".exe"
+            echo "Downloading ${bin}_${plat}${ext}..."
+            curl -sL "https://github.com/{{.REPO}}/releases/latest/download/${bin}_${plat}${ext}" \
+              -o "dist/${bin}_${plat}${ext}" || echo "Warning: ${bin}_${plat}${ext} not found"
+          done
+        done
