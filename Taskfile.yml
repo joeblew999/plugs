@@ -269,7 +269,7 @@ tasks:
         fi
 
   gh:open:
-    desc: "Open a resource (usage: task gh:open -- repo|releases|actions|docs|dns)"
+    desc: "Open a resource (usage: task gh:open -- repo|releases|actions|docs)"
     cmds:
       - |
         case "{{.CLI_ARGS}}" in
@@ -277,9 +277,15 @@ tasks:
           releases) open "{{.RELEASES_URL}}" ;;
           actions) open "{{.REPO_URL}}/actions" ;;
           docs|pages) open "{{.PAGES_URL}}" ;;
-          dns|cloudflare) open "{{.CLOUDFLARE_DNS_URL}}" ;;
-          *) echo "Usage: task gh:open -- repo|releases|actions|docs|dns" ;;
+          *) echo "Usage: task gh:open -- repo|releases|actions|docs" ;;
         esac
+
+  # --- Cloudflare ---
+
+  cf:dns:
+    desc: Open Cloudflare DNS settings for custom domain setup
+    cmds:
+      - open "{{.CLOUDFLARE_DNS_URL}}"
 
   # --- Run Tasks ---
 
