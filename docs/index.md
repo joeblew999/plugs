@@ -4,17 +4,17 @@
 
 ---
 
-# Hardware Control Plugins
+# plugs
 
-CLI tools for controlling hardware devices. Self-updating, no package manager required.
+A plugin system for hardware control tools. Self-updating binaries distributed via GitHub Releases.
 
-## Available Plugins
+## What's Here
 
-**x1ctl** - Control Bambu Lab X1 printers over LAN. Check status, send commands, monitor prints without cloud dependency.
+**plugctl** - The plugin manager. Use it to install, update, and manage plugins.
 
-**fakeprinter** - Mock printer server for testing and development.
-
-**plugctl** - Plugin manager. Install, update, and manage all plugins.
+**Plugins** - The actual tools that talk to hardware:
+- **x1ctl** - Control Bambu Lab X1 printers over LAN
+- **fakeprinter** - Mock printer server for testing
 
 ## Quick Start
 
@@ -33,15 +33,15 @@ Add `~/.plugctl/bin` to your PATH.
 
 Download the binary for your platform from the table below and run it directly.
 
-## Downloads
+## Download plugctl
 
-| | Linux | macOS | Windows |
-|---|---|---|---|
-| **plugctl** | [amd64](https://github.com/joeblew999/plugs/releases/latest/download/plugctl_linux_amd64) / [arm64](https://github.com/joeblew999/plugs/releases/latest/download/plugctl_linux_arm64) | [Intel](https://github.com/joeblew999/plugs/releases/latest/download/plugctl_darwin_amd64) / [Apple Silicon](https://github.com/joeblew999/plugs/releases/latest/download/plugctl_darwin_arm64) | [amd64](https://github.com/joeblew999/plugs/releases/latest/download/plugctl_windows_amd64.exe) / [arm64](https://github.com/joeblew999/plugs/releases/latest/download/plugctl_windows_arm64.exe) |
-| **x1ctl** | [amd64](https://github.com/joeblew999/plugs/releases/latest/download/x1ctl_linux_amd64) / [arm64](https://github.com/joeblew999/plugs/releases/latest/download/x1ctl_linux_arm64) | [Intel](https://github.com/joeblew999/plugs/releases/latest/download/x1ctl_darwin_amd64) / [Apple Silicon](https://github.com/joeblew999/plugs/releases/latest/download/x1ctl_darwin_arm64) | [amd64](https://github.com/joeblew999/plugs/releases/latest/download/x1ctl_windows_amd64.exe) / [arm64](https://github.com/joeblew999/plugs/releases/latest/download/x1ctl_windows_arm64.exe) |
-| **fakeprinter** | [amd64](https://github.com/joeblew999/plugs/releases/latest/download/fakeprinter_linux_amd64) / [arm64](https://github.com/joeblew999/plugs/releases/latest/download/fakeprinter_linux_arm64) | [Intel](https://github.com/joeblew999/plugs/releases/latest/download/fakeprinter_darwin_amd64) / [Apple Silicon](https://github.com/joeblew999/plugs/releases/latest/download/fakeprinter_darwin_arm64) | [amd64](https://github.com/joeblew999/plugs/releases/latest/download/fakeprinter_windows_amd64.exe) / [arm64](https://github.com/joeblew999/plugs/releases/latest/download/fakeprinter_windows_arm64.exe) |
+| Linux | macOS | Windows |
+|---|---|---|
+| [amd64](https://github.com/joeblew999/plugs/releases/latest/download/plugctl_linux_amd64) / [arm64](https://github.com/joeblew999/plugs/releases/latest/download/plugctl_linux_arm64) | [Intel](https://github.com/joeblew999/plugs/releases/latest/download/plugctl_darwin_amd64) / [Apple Silicon](https://github.com/joeblew999/plugs/releases/latest/download/plugctl_darwin_arm64) | [amd64](https://github.com/joeblew999/plugs/releases/latest/download/plugctl_windows_amd64.exe) / [arm64](https://github.com/joeblew999/plugs/releases/latest/download/plugctl_windows_arm64.exe) |
 
-Or get all binaries from [GitHub Releases](https://github.com/joeblew999/plugs/releases/latest).
+Then use `plugctl install <plugin>` to install plugins.
+
+Or download plugins directly from [GitHub Releases](https://github.com/joeblew999/plugs/releases/latest).
 
 ## Using plugctl
 
