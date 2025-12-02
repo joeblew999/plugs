@@ -228,10 +228,14 @@ tasks:
     cmds:
       - |
         echo "Configuring GitHub Pages to serve from /docs..."
-        gh api repos/{{.GITHUB_USER}}/{{.GITHUB_REPO}}/pages -X PUT \
-          --input - <<< '{"build_type":"legacy","source":{"branch":"main","path":"/docs"}}' \
-          && echo "✓ Pages configured to serve from /docs on main" \
-          || echo "✗ Failed to configure pages (may already be configured)"
+        # Try POST first (create new), fall back to PUT (update existing)
+        gh api repos/{{.GITHUB_USER}}/{{.GITHUB_REPO}}/pages -X POST \
+          --input - <<< '{"build_type":"legacy","source":{"branch":"main","path":"/docs"}}' 2>/dev/null \
+          && echo "✓ Pages created and configured to serve from /docs on main" \
+          || gh api repos/{{.GITHUB_USER}}/{{.GITHUB_REPO}}/pages -X PUT \
+            --input - <<< '{"build_type":"legacy","source":{"branch":"main","path":"/docs"}}' \
+            && echo "✓ Pages updated to serve from /docs on main" \
+            || echo "✗ Failed to configure pages"
 
   docs:pages:disable:
     desc: Disable GitHub Pages for this repository
