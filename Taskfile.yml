@@ -218,11 +218,22 @@ tasks:
         echo "=== GitHub Pages Status ==="
         gh api repos/{{.GITHUB_USER}}/{{.GITHUB_REPO}}/pages --jq '{
           url: .html_url,
-          source: .source,
-          build_type: .build_type,
+          cname: .cname,
           status: .status,
           https_enforced: .https_enforced
         }' 2>/dev/null || echo "Pages not configured"
+
+  docs:pages:https:
+    desc: Enable HTTPS enforcement (run after certificate is issued)
+    preconditions:
+      - sh: command -v gh
+        msg: "gh CLI not installed. Install with: brew install gh"
+    cmds:
+      - |
+        gh api repos/{{.GITHUB_USER}}/{{.GITHUB_REPO}}/pages -X PUT \
+          --input - <<< '{"https_enforced":true}' \
+          && echo "✓ HTTPS enforcement enabled" \
+          || echo "✗ Failed - certificate may not be ready yet"
 
   docs:pages:setup:
     desc: Configure GitHub Pages to serve from /docs on main branch
